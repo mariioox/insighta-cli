@@ -41,27 +41,31 @@ program
     app.get('/callback', async (req, res) => {
       const { code, state: returnedState } = req.query;
       
+      // Verification
       if (returnedState !== state) {
           console.error('❌ State mismatch! Possible CSRF attack.');
           return res.send('Authentication failed: State mismatch.');
       }
 
       try {
+        // Exchange code for tokens at your backend
         const response = await axios.post(`${BACKEND_URL}/api/v1/auth/exchange`, {
           code,
           code_verifier: verifier
         });
 
+        // Store tokens[cite: 1]
         config.set('accessToken', response.data.tokens.accessToken);
         config.set('refreshToken', response.data.tokens.refreshToken);
         config.set('user', {
-          name: response.data.user.name || response.data.user.username || 'GitHub User',
-          role: response.data.user.role
-        });
+    name: response.data.user.name || response.data.user.username || 'GitHub User',
+    role: response.data.user.role
+});
 
         res.send('<h1>Login Successful!</h1><p>You can close this tab now.</p>');
-        console.log(`\n✅ Logged in as @${config.get('user').name}`);
+        console.log(`\n✅ Logged in as @${response.data.user.name}`);
         
+        // This stops the "Opening browser..." hang
         server.close(() => {
             process.exit(0);
         });
@@ -73,8 +77,7 @@ program
     });
 
     const GITHUB_CLIENT_ID = 'Ov23liS6un3QBW4mSs3e';
-    // Re-added the challenge and state correctly here
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${state}&code_challenge=${challenge}&code_challenge_method=S256&scope=user:email`;
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${state}&scope=user:email`;
     
     console.log('Opening browser for authentication...');
     await open(authUrl);
@@ -83,7 +86,7 @@ program
 // --- LIST PROFILES ---
 program
   .command('profiles:list')
-  .description('List profiles with filters and pagination')
+  .description('List profiles with filters and pagination[cite: 1]')
   .option('-g, --gender <gender>', 'Filter by gender')
   .option('-c, --country <country>', 'Filter by country ID')
   .option('--page <number>', 'Page number', '1')
@@ -103,39 +106,10 @@ program
     }
   });
 
-// --- SEARCH PROFILES (New Fixed Command) ---
-program
-  .command('profiles:search <query>')
-  .description('Search profiles using natural language')
-  .action(async (query) => {
-    const token = config.get('accessToken');
-    if (!token) return console.log('❌ Please login first: insighta login');
-
-    try {
-      const resp = await axios.get(`${BACKEND_URL}/api/v1/profiles/search`, {
-        params: { q: query },
-        headers: { 'Authorization': `Bearer ${token}`, 'X-API-Version': '1' }
-      });
-      
-      if (resp.data.data.length === 0) {
-        console.log('No profiles found for that query.');
-      } else {
-        console.table(resp.data.data.map(p => ({
-          Name: p.name,
-          Gender: p.gender,
-          Age: p.age,
-          Country: p.country_id
-        })));
-      }
-    } catch (err) {
-      console.error('❌ Search failed:', err.response?.data?.message || err.message);
-    }
-  });
-
-// --- EXPORT PROFILES ---
+// --- EXPORT PROFILES (Admin Only) ---
 program
   .command('profiles:export')
-  .description('Export profiles to CSV (Admin only)')
+  .description('Export profiles to CSV (Admin only)[cite: 1]')
   .action(async () => {
     const token = config.get('accessToken');
     try {
@@ -150,7 +124,7 @@ program
       fs.writeFileSync(filename, resp.data);
       console.log(`✅ File saved to: ./${filename}`);
     } catch (err) {
-      const msg = err.response?.status === 403 ? "Forbidden: Admin access only" : err.message;
+      const msg = err.response?.status === 403 ? "Forbidden: Admin access only[cite: 1]" : err.message;
       console.error('❌ Export failed:', msg);
     }
   });
@@ -158,7 +132,7 @@ program
 // --- WHOAMI ---
 program
   .command('whoami')
-  .description('Display current session info')
+  .description('Display current session info[cite: 1]')
   .action(() => {
     const user = config.get('user');
     if (!user) return console.log('Not logged in.');

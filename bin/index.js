@@ -30,7 +30,7 @@ program
       const { code } = req.query;
 
       try {
-        // We send the code to your backend exchange endpoint
+        // Sends the code to backend exchange endpoint
         const response = await axios.post(`${BACKEND_URL}/api/v1/auth/exchange`, {
           code
         });

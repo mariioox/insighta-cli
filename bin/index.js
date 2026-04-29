@@ -57,7 +57,10 @@ program
         // Store tokens[cite: 1]
         config.set('accessToken', response.data.tokens.accessToken);
         config.set('refreshToken', response.data.tokens.refreshToken);
-        config.set('user', response.data.user);
+        config.set('user', {
+    name: response.data.user.name || response.data.user.username || 'GitHub User',
+    role: response.data.user.role
+});
 
         res.send('<h1>Login Successful!</h1><p>You can close this tab now.</p>');
         console.log(`\n✅ Logged in as @${response.data.user.name}`);

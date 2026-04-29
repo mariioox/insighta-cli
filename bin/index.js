@@ -32,36 +32,50 @@ program
   .action(async () => {
     const { verifier, challenge } = generatePKCE();
     const state = crypto.randomBytes(16).toString('hex');
+    
     const app = express();
-    const server = app.listen(4321);
+    const server = app.listen(4321, () => {
+        console.log('Temporary local server started on port 4321...');
+    });
 
     app.get('/callback', async (req, res) => {
       const { code, state: returnedState } = req.query;
-      if (returnedState !== state) return res.send('State mismatch error.');
+      
+      // Verification
+      if (returnedState !== state) {
+          console.error('❌ State mismatch! Possible CSRF attack.');
+          return res.send('Authentication failed: State mismatch.');
+      }
 
       try {
+        // Exchange code for tokens at your backend
         const response = await axios.post(`${BACKEND_URL}/api/v1/auth/exchange`, {
           code,
           code_verifier: verifier
         });
 
+        // Store tokens[cite: 1]
         config.set('accessToken', response.data.tokens.accessToken);
         config.set('refreshToken', response.data.tokens.refreshToken);
         config.set('user', response.data.user);
 
-        res.send('<h1>Login Successful!</h1><p>You can close this tab and return to your terminal.</p>');
+        res.send('<h1>Login Successful!</h1><p>You can close this tab now.</p>');
         console.log(`\n✅ Logged in as @${response.data.user.name}`);
-        server.close();
-        process.exit(0);
+        
+        // This stops the "Opening browser..." hang
+        server.close(() => {
+            process.exit(0);
+        });
       } catch (err) {
-        res.send('Login failed.');
-        console.error('❌ Exchange failed:', err.response?.data || err.message);
-        server.close();
-        process.exit(1);
+        res.send('<h1>Login Failed</h1>');
+        console.error('❌ Login Error:', err.response?.data || err.message);
+        server.close(() => process.exit(1));
       }
     });
 
-    const authUrl = `https://github.com/login/oauth/authorize?client_id=YOUR_CLIENT_ID&state=${state}&scope=user:email`;
+    const GITHUB_CLIENT_ID = 'Ov23liS6un3QBW4mSs3e';
+    const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&state=${state}&scope=user:email`;
+    
     console.log('Opening browser for authentication...');
     await open(authUrl);
   });

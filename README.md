@@ -15,9 +15,11 @@ To install this CLI globally on your system:
 git clone https://github.com/mariioox/insighta-cli.git
 npm install
 npm link
+```
 
 
 ## Commands
+
 | Command | Description |
 | :--- | :--- |
 | `insighta login` | Authenticate with GitHub (PKCE)
